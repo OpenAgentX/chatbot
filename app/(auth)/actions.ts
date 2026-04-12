@@ -1,5 +1,6 @@
 "use server";
 
+import { AuthError } from "next-auth";
 import { z } from "zod";
 
 import { createUser, getUser } from "@/lib/db/queries";
@@ -35,6 +36,10 @@ export const login = async (
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { status: "invalid_data" };
+    }
+
+    if (error instanceof AuthError) {
+      return { status: "failed" };
     }
 
     return { status: "failed" };
@@ -77,6 +82,10 @@ export const register = async (
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { status: "invalid_data" };
+    }
+
+    if (error instanceof AuthError) {
+      return { status: "failed" };
     }
 
     return { status: "failed" };
