@@ -1,4 +1,9 @@
-import { getAllGatewayModels, getCapabilities, isDemo } from "@/lib/ai/models";
+import {
+  getAllGatewayModels,
+  getCapabilities,
+  getConfiguredChatModels,
+  isDemo,
+} from "@/lib/ai/models";
 
 export async function GET() {
   const headers = {
@@ -6,6 +11,19 @@ export async function GET() {
   };
 
   const curatedCapabilities = await getCapabilities();
+  const isOpenAICompatibleProviderEnabled = Boolean(
+    process.env.OPENAI_COMPATIBLE_API_KEY
+  );
+
+  if (isOpenAICompatibleProviderEnabled) {
+    return Response.json(
+      {
+        capabilities: curatedCapabilities,
+        models: await getConfiguredChatModels(),
+      },
+      { headers }
+    );
+  }
 
   if (isDemo) {
     const models = await getAllGatewayModels();

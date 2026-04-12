@@ -46,8 +46,10 @@ export const requestSuggestions = ({
         "userId" | "createdAt" | "documentCreatedAt"
       >[] = [];
 
+      const model = await getLanguageModel(modelId);
+
       const { partialOutputStream } = streamText({
-        model: getLanguageModel(modelId),
+        model,
         system:
           "You are a writing assistant. Given a piece of writing, offer up to 5 suggestions to improve it. Each suggestion must contain full sentences, not just individual words. Describe what changed and why.",
         prompt: document.content,

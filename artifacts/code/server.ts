@@ -14,9 +14,10 @@ export const codeDocumentHandler = createDocumentHandler<"code">({
   kind: "code",
   onCreateDocument: async ({ title, dataStream, modelId }) => {
     let draftContent = "";
+    const model = await getLanguageModel(modelId);
 
     const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+      model,
       system: `${codePrompt}\n\nOutput ONLY the code. No explanations, no markdown fences, no wrapping.`,
       prompt: title,
     });
@@ -36,9 +37,10 @@ export const codeDocumentHandler = createDocumentHandler<"code">({
   },
   onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";
+    const model = await getLanguageModel(modelId);
 
     const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+      model,
       system: `${updateDocumentPrompt(document.content, "code")}\n\nOutput ONLY the complete updated code. No explanations, no markdown fences, no wrapping.`,
       prompt: description,
     });

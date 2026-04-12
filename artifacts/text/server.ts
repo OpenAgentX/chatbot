@@ -7,9 +7,10 @@ export const textDocumentHandler = createDocumentHandler<"text">({
   kind: "text",
   onCreateDocument: async ({ title, dataStream, modelId }) => {
     let draftContent = "";
+    const model = await getLanguageModel(modelId);
 
     const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+      model,
       system:
         "Write about the given topic. Markdown is supported. Use headings wherever appropriate.",
       experimental_transform: smoothStream({ chunking: "word" }),
@@ -31,9 +32,10 @@ export const textDocumentHandler = createDocumentHandler<"text">({
   },
   onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";
+    const model = await getLanguageModel(modelId);
 
     const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+      model,
       system: updateDocumentPrompt(document.content, "text"),
       experimental_transform: smoothStream({ chunking: "word" }),
       prompt: description,

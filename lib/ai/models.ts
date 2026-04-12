@@ -84,9 +84,194 @@ export const chatModels: ChatModel[] = [
   },
 ];
 
+function isOpenAICompatibleProviderEnabled() {
+  return Boolean(process.env.OPENAI_COMPATIBLE_API_KEY);
+}
+
+function inferModelProvider(modelId: string) {
+  return modelId.includes("/") ? modelId.split("/")[0] : "openai";
+}
+
+function normalizeBaseUrl(baseUrl: string) {
+  return baseUrl.replace(/\/+$/, "");
+}
+
+function inferModelCapabilities(modelId: string): ModelCapabilities {
+  const normalized = modelId.toLowerCase();
+
+  const reasoning =
+    normalized.startsWith("o1") ||
+    normalized.startsWith("o3") ||
+    normalized.startsWith("o4") ||
+    normalized.includes("gpt-5") ||
+    normalized.includes("reason") ||
+    normalized.includes("r1");
+
+  const vision =
+    normalized.includes("gpt-4o") ||
+    normalized.includes("gpt-4.1") ||
+    normalized.includes("vision") ||
+    normalized.includes("vl") ||
+    normalized.includes("omni");
+
+  return {
+    tools: true,
+    vision,
+    reasoning,
+  };
+}
+
+function parseOpenAICompatibleModels(): ChatModel[] {
+  const raw = process.env.OPENAI_COMPATIBLE_MODELS?.trim();
+
+  if (!raw) {
+    return chatModels;
+  }
+
+  const parsed = raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [idPart, namePart] = entry.split("|").map((part) => part.trim());
+      const id = idPart;
+
+      return {
+        id,
+        name: namePart || id,
+        provider: inferModelProvider(id),
+        description: "Configured via OPENAI_COMPATIBLE_MODELS",
+      } satisfies ChatModel;
+    });
+
+  return parsed.length > 0 ? parsed : chatModels;
+}
+
+function parseFallbackModelsFromEnv(): ChatModel[] {
+  const explicitModels = parseOpenAICompatibleModels();
+
+  if (explicitModels !== chatModels) {
+    return explicitModels;
+  }
+
+  const ids = [
+    process.env.OPENAI_COMPATIBLE_DEFAULT_MODEL?.trim(),
+    process.env.OPENAI_COMPATIBLE_TITLE_MODEL?.trim(),
+  ].filter((value): value is string => Boolean(value));
+
+  const uniqueIds = [...new Set(ids)];
+
+  if (uniqueIds.length > 0) {
+    return uniqueIds.map((id) => ({
+      id,
+      name: id,
+      provider: inferModelProvider(id),
+      description: "Configured via environment variables",
+    }));
+  }
+
+  return chatModels;
+}
+
+type OpenAICompatibleModelResponse = {
+  id: string;
+  owned_by?: string;
+};
+
+async function fetchOpenAICompatibleModelsFromApi(): Promise<ChatModel[] | null> {
+  const baseUrl = process.env.OPENAI_COMPATIBLE_BASE_URL?.trim();
+  const apiKey = process.env.OPENAI_COMPATIBLE_API_KEY?.trim();
+
+  if (!baseUrl || !apiKey) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${normalizeBaseUrl(baseUrl)}/models`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      next: { revalidate: 3600 },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const json = await response.json();
+    const models = Array.isArray(json?.data) ? json.data : [];
+
+    const parsed = models
+      .map((model: OpenAICompatibleModelResponse) => {
+        if (!model?.id) {
+          return null;
+        }
+
+        return {
+          id: model.id,
+          name: model.id,
+          provider:
+            inferModelProvider(model.id) ||
+            model.owned_by?.toLowerCase() ||
+            "openai",
+          description: "Discovered from OpenAI-compatible /models endpoint",
+        } satisfies ChatModel;
+      })
+      .filter((model: ChatModel | null): model is ChatModel => Boolean(model));
+
+    return parsed.length > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getConfiguredChatModels(): Promise<ChatModel[]> {
+  if (!isOpenAICompatibleProviderEnabled()) {
+    return chatModels;
+  }
+
+  return (await fetchOpenAICompatibleModelsFromApi()) ?? parseFallbackModelsFromEnv();
+}
+
+export async function getConfiguredDefaultChatModel(): Promise<string> {
+  if (!isOpenAICompatibleProviderEnabled()) {
+    return DEFAULT_CHAT_MODEL;
+  }
+
+  const models = await getConfiguredChatModels();
+
+  return (
+    process.env.OPENAI_COMPATIBLE_DEFAULT_MODEL?.trim() ||
+    models[0]?.id ||
+    DEFAULT_CHAT_MODEL
+  );
+}
+
+export async function getConfiguredTitleModelId(): Promise<string> {
+  if (!isOpenAICompatibleProviderEnabled()) {
+    return titleModel.id;
+  }
+
+  return (
+    process.env.OPENAI_COMPATIBLE_TITLE_MODEL?.trim() ||
+    (await getConfiguredDefaultChatModel())
+  );
+}
+
 export async function getCapabilities(): Promise<
   Record<string, ModelCapabilities>
 > {
+  if (isOpenAICompatibleProviderEnabled()) {
+    const models = await getConfiguredChatModels();
+
+    return Object.fromEntries(
+      models.map((model) => [
+        model.id,
+        inferModelCapabilities(model.id),
+      ])
+    );
+  }
+
   const results = await Promise.all(
     chatModels.map(async (model) => {
       try {
@@ -143,6 +328,15 @@ export type GatewayModelWithCapabilities = ChatModel & {
 export async function getAllGatewayModels(): Promise<
   GatewayModelWithCapabilities[]
 > {
+  if (isOpenAICompatibleProviderEnabled()) {
+    const models = await getConfiguredChatModels();
+
+    return models.map((model) => ({
+      ...model,
+      capabilities: inferModelCapabilities(model.id),
+    }));
+  }
+
   try {
     const res = await fetch("https://ai-gateway.vercel.sh/v1/models", {
       next: { revalidate: 86_400 },
@@ -174,7 +368,9 @@ export function getActiveModels(): ChatModel[] {
   return chatModels;
 }
 
-export const allowedModelIds = new Set(chatModels.map((m) => m.id));
+export async function getAllowedModelIds() {
+  return new Set((await getConfiguredChatModels()).map((m) => m.id));
+}
 
 export const modelsByProvider = chatModels.reduce(
   (acc, model) => {

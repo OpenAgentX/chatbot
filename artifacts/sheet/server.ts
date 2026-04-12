@@ -7,9 +7,10 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   kind: "sheet",
   onCreateDocument: async ({ title, dataStream, modelId }) => {
     let draftContent = "";
+    const model = await getLanguageModel(modelId);
 
     const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+      model,
       system: `${sheetPrompt}\n\nOutput ONLY the raw CSV data. No explanations, no markdown fences.`,
       prompt: title,
     });
@@ -29,9 +30,10 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   },
   onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";
+    const model = await getLanguageModel(modelId);
 
     const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+      model,
       system: `${updateDocumentPrompt(document.content, "sheet")}\n\nOutput ONLY the raw CSV data. No explanations, no markdown fences.`,
       prompt: description,
     });
