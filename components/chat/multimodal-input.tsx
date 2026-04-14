@@ -649,7 +649,7 @@ function PureModelSelectorCompact({
     activeModels.find((m: ChatModel) => m.id === selectedModelId) ??
     activeModels.find((m: ChatModel) => m.id === DEFAULT_CHAT_MODEL) ??
     activeModels[0];
-  const [provider] = selectedModel.id.split("/");
+  const provider = selectedModel.provider || selectedModel.id.split("/")[0];
 
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
@@ -734,7 +734,7 @@ function PureModelSelectorCompact({
                 key={key}
               >
                 {grouped[key].map(({ model, curated }) => {
-                  const logoProvider = model.id.split("/")[0];
+                  const logoProvider = model.provider || model.id.split("/")[0];
                   return (
                     <ModelSelectorItem
                       className={cn(

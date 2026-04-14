@@ -14,7 +14,7 @@ export const authConfig = {
       console.error(`[auth][error] ${error.name}: ${error.message}`);
 
       if (error.stack) {
-        console.error(error.stack.replace(/.*/, "").substring(1));
+        console.error(error.stack.replace(/.*/, "").slice(1));
       }
     },
   },

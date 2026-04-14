@@ -19,11 +19,32 @@ export const user = pgTable("User", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAnonymous: boolean("isAnonymous").notNull().default(false),
+  isAdmin: boolean("isAdmin").notNull().default(false),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
 export type User = InferSelectModel<typeof user>;
+
+export type ModelProvider = "gateway" | "openai-compatible" | "google";
+
+export const modelProviderConfig = pgTable("ModelProviderConfig", {
+  id: text("id").primaryKey().notNull().default("default"),
+  provider: text("provider")
+    .$type<ModelProvider>()
+    .notNull()
+    .default("gateway"),
+  baseUrl: text("baseUrl"),
+  apiKey: text("apiKey"),
+  defaultModel: text("defaultModel"),
+  titleModel: text("titleModel"),
+  customModels: text("customModels"),
+  updatedBy: uuid("updatedBy").references(() => user.id),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type ModelProviderConfig = InferSelectModel<typeof modelProviderConfig>;
 
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

@@ -3,7 +3,11 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import type { DefaultJWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import { DUMMY_PASSWORD } from "@/lib/constants";
-import { createGuestUser, getUser } from "@/lib/db/queries";
+import {
+  createGuestUser,
+  ensureRegularUserIsAdmin,
+  getUser,
+} from "@/lib/db/queries";
 import { authConfig } from "./auth.config";
 
 export type UserType = "guest" | "regular";
@@ -13,6 +17,7 @@ declare module "next-auth" {
     user: {
       id: string;
       type: UserType;
+      isAdmin: boolean;
     } & DefaultSession["user"];
   }
 
@@ -20,6 +25,7 @@ declare module "next-auth" {
     id?: string;
     email?: string | null;
     type: UserType;
+    isAdmin: boolean;
   }
 }
 
@@ -27,6 +33,7 @@ declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT {
     id: string;
     type: UserType;
+    isAdmin: boolean;
   }
 }
 
@@ -66,7 +73,10 @@ export const {
           return null;
         }
 
-        return { ...user, type: "regular" };
+        const isAdmin =
+          user.isAdmin || (await ensureRegularUserIsAdmin({ id: user.id }));
+
+        return { ...user, isAdmin, type: "regular" };
       },
     }),
     Credentials({
@@ -74,7 +84,7 @@ export const {
       credentials: {},
       async authorize() {
         const [guestUser] = await createGuestUser();
-        return { ...guestUser, type: "guest" };
+        return { ...guestUser, isAdmin: false, type: "guest" };
       },
     }),
   ],
@@ -83,6 +93,7 @@ export const {
       if (user) {
         token.id = user.id as string;
         token.type = user.type;
+        token.isAdmin = user.isAdmin;
       }
 
       return token;
@@ -91,6 +102,7 @@ export const {
       if (session.user) {
         session.user.id = token.id;
         session.user.type = token.type;
+        session.user.isAdmin = token.isAdmin;
       }
 
       return session;

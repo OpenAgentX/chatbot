@@ -23,7 +23,9 @@ import {
   chat,
   type DBMessage,
   document,
+  type ModelProviderConfig,
   message,
+  modelProviderConfig,
   type Suggestion,
   stream,
   suggestion,
@@ -47,11 +49,66 @@ export async function getUser(email: string): Promise<User[]> {
   }
 }
 
+export async function getUserById({ id }: { id: string }) {
+  try {
+    const [selectedUser] = await db.select().from(user).where(eq(user.id, id));
+    return selectedUser ?? null;
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to get user by id");
+  }
+}
+
+export async function getAdminUserCount() {
+  try {
+    const [result] = await db
+      .select({ count: count() })
+      .from(user)
+      .where(and(eq(user.isAnonymous, false), eq(user.isAdmin, true)));
+
+    return result?.count ?? 0;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to count admin users"
+    );
+  }
+}
+
+export async function ensureRegularUserIsAdmin({ id }: { id: string }) {
+  try {
+    const adminCount = await getAdminUserCount();
+
+    if (adminCount > 0) {
+      const selectedUser = await getUserById({ id });
+      return selectedUser?.isAdmin ?? false;
+    }
+
+    const [updatedUser] = await db
+      .update(user)
+      .set({ isAdmin: true, updatedAt: new Date() })
+      .where(and(eq(user.id, id), eq(user.isAnonymous, false)))
+      .returning({ isAdmin: user.isAdmin });
+
+    return updatedUser?.isAdmin ?? false;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to ensure admin user exists"
+    );
+  }
+}
+
 export async function createUser(email: string, password: string) {
   const hashedPassword = generateHashedPassword(password);
 
   try {
-    return await db.insert(user).values({ email, password: hashedPassword });
+    const adminCount = await getAdminUserCount();
+
+    return await db.insert(user).values({
+      email,
+      password: hashedPassword,
+      isAdmin: adminCount === 0,
+    });
   } catch (_error) {
     throw new ChatbotError("bad_request:database", "Failed to create user");
   }
@@ -70,6 +127,69 @@ export async function createGuestUser() {
     throw new ChatbotError(
       "bad_request:database",
       "Failed to create guest user"
+    );
+  }
+}
+
+export async function getModelProviderConfig(): Promise<ModelProviderConfig | null> {
+  try {
+    const [config] = await db
+      .select()
+      .from(modelProviderConfig)
+      .where(eq(modelProviderConfig.id, "default"));
+
+    return config ?? null;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get model provider config"
+    );
+  }
+}
+
+export async function upsertModelProviderConfig({
+  provider,
+  baseUrl,
+  apiKey,
+  defaultModel,
+  titleModel,
+  customModels,
+  updatedBy,
+}: Omit<ModelProviderConfig, "createdAt" | "updatedAt" | "id">) {
+  try {
+    const [config] = await db
+      .insert(modelProviderConfig)
+      .values({
+        id: "default",
+        provider,
+        baseUrl,
+        apiKey,
+        defaultModel,
+        titleModel,
+        customModels,
+        updatedBy,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: modelProviderConfig.id,
+        set: {
+          provider,
+          baseUrl,
+          apiKey,
+          defaultModel,
+          titleModel,
+          customModels,
+          updatedBy,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return config;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to save model provider config"
     );
   }
 }

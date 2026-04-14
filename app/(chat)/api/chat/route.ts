@@ -12,14 +12,14 @@ import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
-import {
-  chatModels,
-  getAllowedModelIds,
-  getConfiguredDefaultChatModel,
-  getCapabilities,
-} from "@/lib/ai/models";
+import { chatModels } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel, getProviderOptions } from "@/lib/ai/providers";
+import {
+  getAllowedModelIds,
+  getCapabilities,
+  getConfiguredDefaultChatModel,
+} from "@/lib/ai/runtime-config";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
@@ -56,6 +56,14 @@ function getStreamContext() {
 }
 
 export { getStreamContext };
+
+function isGoogleConnectionTimeoutError(error: unknown) {
+  return (
+    error instanceof Error &&
+    error.message.includes("generativelanguage.googleapis.com") &&
+    error.message.includes("Connect Timeout Error")
+  );
+}
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -118,7 +126,12 @@ export async function POST(request: Request) {
         title: "New chat",
         visibility: selectedVisibilityType,
       });
-      titlePromise = generateTitleFromUserMessage({ message });
+      titlePromise = generateTitleFromUserMessage({ message }).catch(
+        (error) => {
+          console.error("Failed to generate chat title", error);
+          return "New chat";
+        }
+      );
     }
 
     let uiMessages: ChatMessage[];
@@ -209,7 +222,7 @@ export async function POST(request: Request) {
                   "updateDocument",
                   "requestSuggestions",
                 ],
-          providerOptions: getProviderOptions(modelConfig),
+          providerOptions: await getProviderOptions(modelConfig),
           tools: {
             getWeather,
             createDocument: createDocument({
@@ -284,6 +297,9 @@ export async function POST(request: Request) {
         }
       },
       onError: (error) => {
+        if (isGoogleConnectionTimeoutError(error)) {
+          return "Cannot reach Google Generative AI from this environment. Update the Google base URL in /admin or switch to a non-Google model.";
+        }
         if (
           error instanceof Error &&
           error.message?.includes(
@@ -331,6 +347,13 @@ export async function POST(request: Request) {
       )
     ) {
       return new ChatbotError("bad_request:activate_gateway").toResponse();
+    }
+
+    if (isGoogleConnectionTimeoutError(error)) {
+      return new Response(
+        "Cannot reach Google Generative AI from this environment. Update the Google base URL in /admin or switch to a non-Google model.",
+        { status: 503 }
+      );
     }
 
     console.error("Unhandled error in chat API:", error, { vercelId });

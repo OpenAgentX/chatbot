@@ -2,30 +2,14 @@ import {
   getAllGatewayModels,
   getCapabilities,
   getConfiguredChatModels,
-  isDemo,
-} from "@/lib/ai/models";
+  shouldExposeAllGatewayModels,
+} from "@/lib/ai/runtime-config";
 
 export async function GET() {
-  const headers = {
-    "Cache-Control": "public, max-age=86400, s-maxage=86400",
-  };
+  const headers = { "Cache-Control": "no-store" };
 
   const curatedCapabilities = await getCapabilities();
-  const isOpenAICompatibleProviderEnabled = Boolean(
-    process.env.OPENAI_COMPATIBLE_API_KEY
-  );
-
-  if (isOpenAICompatibleProviderEnabled) {
-    return Response.json(
-      {
-        capabilities: curatedCapabilities,
-        models: await getConfiguredChatModels(),
-      },
-      { headers }
-    );
-  }
-
-  if (isDemo) {
+  if (await shouldExposeAllGatewayModels()) {
     const models = await getAllGatewayModels();
     const capabilities = Object.fromEntries(
       models.map((m) => [m.id, curatedCapabilities[m.id] ?? m.capabilities])
@@ -34,5 +18,11 @@ export async function GET() {
     return Response.json({ capabilities, models }, { headers });
   }
 
-  return Response.json(curatedCapabilities, { headers });
+  return Response.json(
+    {
+      capabilities: curatedCapabilities,
+      models: await getConfiguredChatModels(),
+    },
+    { headers }
+  );
 }

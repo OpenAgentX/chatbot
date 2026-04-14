@@ -29,7 +29,7 @@ export async function generateTitleFromUserMessage({
     model: await getTitleModel(),
     system: titlePrompt,
     prompt: getTextFromMessage(message),
-    providerOptions: getProviderOptions(titleModel),
+    providerOptions: await getProviderOptions(titleModel),
   });
   return text
     .replace(/^[#*"\s]+/, "")
