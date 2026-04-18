@@ -32,7 +32,9 @@ export default function AuthLayout({
         <div className="flex items-center gap-1.5 pt-8 text-[13px] text-muted-foreground/50">
           Powered by
           <VercelIcon size={14} />
-          <span className="font-medium text-muted-foreground">AI Gateway</span>
+          <span className="font-medium text-muted-foreground">
+            OpenAI-Compatible API
+          </span>
         </div>
         <div className="flex-1 pt-4">
           <Preview />

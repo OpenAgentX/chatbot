@@ -30,7 +30,9 @@ export async function generateTitleFromUserMessage({
     system: titlePrompt,
     prompt: getTextFromMessage(message),
     providerOptions: {
-      gateway: { order: titleModel.gatewayOrder },
+      ...(titleModel.reasoningEffort && {
+        openai: { reasoningEffort: titleModel.reasoningEffort },
+      }),
     },
   });
   return text

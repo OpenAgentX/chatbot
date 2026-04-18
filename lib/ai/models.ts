@@ -1,12 +1,15 @@
-export const DEFAULT_CHAT_MODEL = "moonshotai/kimi-k2.5";
+const openAIBaseUrl =
+  process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
+const openAIModelsApiUrl =
+  process.env.OPENAI_MODELS_API_URL ??
+  `${openAIBaseUrl.replace(/\/+$/, "")}/models`;
+const openAIApiKey =
+  process.env.OPENAI_API_KEY ?? process.env.AI_GATEWAY_API_KEY;
 
-export const titleModel = {
-  id: "mistral/mistral-small",
-  name: "Mistral Small",
-  provider: "mistral",
-  description: "Fast model for title generation",
-  gatewayOrder: ["mistral"],
-};
+export const DEFAULT_CHAT_MODEL =
+  process.env.NEXT_PUBLIC_DEFAULT_CHAT_MODEL ?? "gpt-4o-mini";
+const DEFAULT_TITLE_MODEL =
+  process.env.NEXT_PUBLIC_TITLE_MODEL ?? DEFAULT_CHAT_MODEL;
 
 export type ModelCapabilities = {
   tools: boolean;
@@ -19,147 +22,162 @@ export type ChatModel = {
   name: string;
   provider: string;
   description: string;
-  gatewayOrder?: string[];
   reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high";
 };
 
-export const chatModels: ChatModel[] = [
-  {
-    id: "deepseek/deepseek-v3.2",
-    name: "DeepSeek V3.2",
-    provider: "deepseek",
-    description: "Fast and capable model with tool use",
-    gatewayOrder: ["bedrock", "deepinfra"],
-  },
-  {
-    id: "mistral/codestral",
-    name: "Codestral",
-    provider: "mistral",
-    description: "Code-focused model with tool use",
-    gatewayOrder: ["mistral"],
-  },
-  {
-    id: "mistral/mistral-small",
-    name: "Mistral Small",
-    provider: "mistral",
-    description: "Fast vision model with tool use",
-    gatewayOrder: ["mistral"],
-  },
-  {
-    id: "moonshotai/kimi-k2.5",
-    name: "Kimi K2.5",
-    provider: "moonshotai",
-    description: "Moonshot AI flagship model",
-    gatewayOrder: ["fireworks", "bedrock"],
-  },
-  {
-    id: "openai/gpt-oss-20b",
-    name: "GPT OSS 20B",
-    provider: "openai",
-    description: "Compact reasoning model",
-    gatewayOrder: ["groq", "bedrock"],
-    reasoningEffort: "low",
-  },
-  {
-    id: "openai/gpt-oss-120b",
-    name: "GPT OSS 120B",
-    provider: "openai",
-    description: "Open-source 120B parameter model",
-    gatewayOrder: ["fireworks", "bedrock"],
-    reasoningEffort: "low",
-  },
-  {
-    id: "xai/grok-4.1-fast-non-reasoning",
-    name: "Grok 4.1 Fast",
-    provider: "xai",
-    description: "Fast non-reasoning model with tool use",
-    gatewayOrder: ["xai"],
-  },
-];
+function inferProvider(modelId: string, ownedBy?: string): string {
+  if (modelId.includes("/")) {
+    return modelId.split("/")[0] ?? "openai";
+  }
+
+  if (ownedBy) {
+    return ownedBy.toLowerCase();
+  }
+
+  return "openai";
+}
+
+function inferCapabilitiesByModelId(modelId: string): ModelCapabilities {
+  const id = modelId.toLowerCase();
+  const reasoning =
+    /\bo\d\b|\bo\d-mini\b|reason|r1|gpt-5|gpt-oss/.test(id) ||
+    id.includes("reasoning");
+  const vision =
+    id.includes("vision") ||
+    id.includes("vl") ||
+    id.includes("gpt-4o") ||
+    id.includes("gpt-4.1") ||
+    id.includes("gpt-5");
+
+  return {
+    tools: true,
+    vision,
+    reasoning,
+  };
+}
+
+function inferReasoningEffort(modelId: string): ChatModel["reasoningEffort"] {
+  return inferCapabilitiesByModelId(modelId).reasoning ? "low" : undefined;
+}
+
+function prettifyModelName(modelId: string): string {
+  return (
+    modelId
+      .split("/")
+      .pop()
+      ?.replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase()) ?? modelId
+  );
+}
+
+const fallbackModelIds = Array.from(
+  new Set([DEFAULT_CHAT_MODEL, DEFAULT_TITLE_MODEL])
+);
+
+export const chatModels: ChatModel[] = fallbackModelIds.map((modelId) => ({
+  id: modelId,
+  name: prettifyModelName(modelId),
+  provider: inferProvider(modelId),
+  description: "Fallback model when model API is unavailable",
+  reasoningEffort: inferReasoningEffort(modelId),
+}));
+
+export const titleModel = {
+  id: DEFAULT_TITLE_MODEL,
+  name: prettifyModelName(DEFAULT_TITLE_MODEL),
+  provider: inferProvider(DEFAULT_TITLE_MODEL),
+  description: "Fast model for title generation",
+  reasoningEffort: inferReasoningEffort(DEFAULT_TITLE_MODEL),
+};
+
+type OpenAIModel = {
+  id: string;
+  object?: string;
+  owned_by?: string;
+};
+
+function getOpenAIHeaders(): Record<string, string> {
+  if (!openAIApiKey) {
+    return {};
+  }
+
+  return {
+    Authorization: `Bearer ${openAIApiKey}`,
+  };
+}
+
+function toChatModel(model: OpenAIModel): ChatModel {
+  return {
+    id: model.id,
+    name: prettifyModelName(model.id),
+    provider: inferProvider(model.id, model.owned_by),
+    description: "",
+    reasoningEffort: inferReasoningEffort(model.id),
+  };
+}
 
 export async function getCapabilities(): Promise<
   Record<string, ModelCapabilities>
 > {
-  const results = await Promise.all(
-    chatModels.map(async (model) => {
-      try {
-        const res = await fetch(
-          `https://ai-gateway.vercel.sh/v1/models/${model.id}/endpoints`,
-          { next: { revalidate: 86_400 } }
-        );
-        if (!res.ok) {
-          return [model.id, { tools: false, vision: false, reasoning: false }];
-        }
+  const models = await getAllGatewayModels();
 
-        const json = await res.json();
-        const endpoints = json.data?.endpoints ?? [];
-        const params = new Set(
-          endpoints.flatMap(
-            (e: { supported_parameters?: string[] }) =>
-              e.supported_parameters ?? []
-          )
-        );
-        const inputModalities = new Set(
-          json.data?.architecture?.input_modalities ?? []
-        );
-
-        return [
-          model.id,
-          {
-            tools: params.has("tools"),
-            vision: inputModalities.has("image"),
-            reasoning: params.has("reasoning"),
-          },
-        ];
-      } catch {
-        return [model.id, { tools: false, vision: false, reasoning: false }];
-      }
-    })
+  return Object.fromEntries(
+    models.map((model) => [model.id, model.capabilities] as const)
   );
-
-  return Object.fromEntries(results);
 }
 
 export const isDemo = process.env.IS_DEMO === "1";
-
-type GatewayModel = {
-  id: string;
-  name: string;
-  type?: string;
-  tags?: string[];
-};
 
 export type GatewayModelWithCapabilities = ChatModel & {
   capabilities: ModelCapabilities;
 };
 
+function addCapabilities(model: ChatModel): GatewayModelWithCapabilities {
+  return {
+    ...model,
+    capabilities: inferCapabilitiesByModelId(model.id),
+  };
+}
+
+function dedupeModelsById(models: ChatModel[]): ChatModel[] {
+  const map = new Map<string, ChatModel>();
+  for (const model of models) {
+    if (!map.has(model.id)) {
+      map.set(model.id, model);
+    }
+  }
+  return [...map.values()];
+}
+
 export async function getAllGatewayModels(): Promise<
   GatewayModelWithCapabilities[]
 > {
   try {
-    const res = await fetch("https://ai-gateway.vercel.sh/v1/models", {
+    const res = await fetch(openAIModelsApiUrl, {
+      headers: getOpenAIHeaders(),
       next: { revalidate: 86_400 },
     });
     if (!res.ok) {
-      return [];
+      return chatModels.map(addCapabilities);
     }
 
-    const json = await res.json();
-    return (json.data ?? [])
-      .filter((m: GatewayModel) => m.type === "language")
-      .map((m: GatewayModel) => ({
-        id: m.id,
-        name: m.name,
-        provider: m.id.split("/")[0],
-        description: "",
-        capabilities: {
-          tools: m.tags?.includes("tool-use") ?? false,
-          vision: m.tags?.includes("vision") ?? false,
-          reasoning: m.tags?.includes("reasoning") ?? false,
-        },
-      }));
+    const json = (await res.json()) as { data?: OpenAIModel[] };
+
+    const dynamicModels = (json.data ?? [])
+      .filter(
+        (model): model is OpenAIModel =>
+          typeof model.id === "string" &&
+          model.id.length > 0 &&
+          (model.object === undefined || model.object === "model")
+      )
+      .map(toChatModel)
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    return dedupeModelsById([...chatModels, ...dynamicModels]).map(
+      addCapabilities
+    );
   } catch {
-    return [];
+    return chatModels.map(addCapabilities);
   }
 }
 
@@ -167,7 +185,22 @@ export function getActiveModels(): ChatModel[] {
   return chatModels;
 }
 
-export const allowedModelIds = new Set(chatModels.map((m) => m.id));
+export function resolveChatModel(
+  selectedModelId: string,
+  availableModels: Array<{ id: string }>
+): string {
+  const modelIds = new Set(availableModels.map((model) => model.id));
+
+  if (modelIds.has(selectedModelId)) {
+    return selectedModelId;
+  }
+
+  if (modelIds.has(DEFAULT_CHAT_MODEL)) {
+    return DEFAULT_CHAT_MODEL;
+  }
+
+  return availableModels[0]?.id ?? DEFAULT_CHAT_MODEL;
+}
 
 export const modelsByProvider = chatModels.reduce(
   (acc, model) => {
