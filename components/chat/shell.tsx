@@ -44,6 +44,8 @@ export function ChatShell() {
     votes,
     currentModelId,
     setCurrentModelId,
+    currentToolIds,
+    setCurrentToolIds,
     showCreditCardAlert,
     setShowCreditCardAlert,
   } = useActiveChat();
@@ -121,7 +123,9 @@ export function ChatShell() {
                     setInput("");
                   }}
                   onModelChange={setCurrentModelId}
+                  onToolIdsChange={setCurrentToolIds}
                   selectedModelId={currentModelId}
+                  selectedToolIds={currentToolIds}
                   selectedVisibilityType={visibilityType}
                   sendMessage={
                     editingMessage

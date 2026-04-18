@@ -23,10 +23,12 @@ import { toast } from "@/components/chat/toast";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+import { defaultSelectableChatToolIds, type ChatToolId } from "@/lib/ai/tools/metadata";
 import type { Vote } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
 import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
+import { useLocalStorage } from "usehooks-ts";
 
 type ActiveChatContextValue = {
   chatId: string;
@@ -45,6 +47,8 @@ type ActiveChatContextValue = {
   votes: Vote[] | undefined;
   currentModelId: string;
   setCurrentModelId: (id: string) => void;
+  currentToolIds: ChatToolId[];
+  setCurrentToolIds: Dispatch<SetStateAction<ChatToolId[]>>;
   showCreditCardAlert: boolean;
   setShowCreditCardAlert: Dispatch<SetStateAction<boolean>>;
 };
@@ -78,6 +82,15 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
+
+  const [currentToolIds, setCurrentToolIds] = useLocalStorage<ChatToolId[]>(
+    "chat-tools",
+    defaultSelectableChatToolIds
+  );
+  const currentToolIdsRef = useRef(currentToolIds);
+  useEffect(() => {
+    currentToolIdsRef.current = currentToolIds;
+  }, [currentToolIds]);
 
   const [input, setInput] = useState("");
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
@@ -145,6 +158,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
               ? { messages: request.messages }
               : { message: lastMessage }),
             selectedChatModel: currentModelIdRef.current,
+            selectedTools: currentToolIdsRef.current,
             selectedVisibilityType: visibility,
             ...request.body,
           },
@@ -262,6 +276,8 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       votes,
       currentModelId,
       setCurrentModelId,
+      currentToolIds,
+      setCurrentToolIds,
       showCreditCardAlert,
       setShowCreditCardAlert,
     }),
@@ -281,6 +297,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       isLoading,
       votes,
       currentModelId,
+      currentToolIds,
       showCreditCardAlert,
     ]
   );

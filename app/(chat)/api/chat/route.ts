@@ -15,6 +15,7 @@ import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { getAllGatewayModels, resolveChatModel } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { getEffectiveActiveChatToolIds } from "@/lib/ai/tools/metadata";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
@@ -63,8 +64,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, message, messages, selectedChatModel, selectedVisibilityType } =
-      requestBody;
+    const {
+      id,
+      message,
+      messages,
+      selectedChatModel,
+      selectedTools,
+      selectedVisibilityType,
+    } = requestBody;
 
     const [, session] = await Promise.all([
       checkBotId().catch(() => null),
@@ -177,6 +184,7 @@ export async function POST(request: Request) {
     const capabilities = modelConfig?.capabilities;
     const isReasoningModel = capabilities?.reasoning === true;
     const supportsTools = capabilities?.tools === true;
+    const activeToolIds = getEffectiveActiveChatToolIds(selectedTools);
 
     const modelMessages = await convertToModelMessages(uiMessages);
 
@@ -191,13 +199,7 @@ export async function POST(request: Request) {
           experimental_activeTools:
             isReasoningModel && !supportsTools
               ? []
-              : [
-                  "getWeather",
-                  "createDocument",
-                  "editDocument",
-                  "updateDocument",
-                  "requestSuggestions",
-                ],
+              : activeToolIds,
           providerOptions: {
             ...(modelConfig?.reasoningEffort && {
               openai: { reasoningEffort: modelConfig.reasoningEffort },

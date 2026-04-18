@@ -3,7 +3,13 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
-import { ArrowUpIcon, BrainIcon, EyeIcon, WrenchIcon } from "lucide-react";
+import {
+  ArrowUpIcon,
+  BrainIcon,
+  ChevronDownIcon,
+  EyeIcon,
+  WrenchIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -36,6 +42,12 @@ import {
   DEFAULT_CHAT_MODEL,
   type ModelCapabilities,
 } from "@/lib/ai/models";
+import {
+  defaultSelectableChatToolIds,
+  normalizeSelectableChatToolIds,
+  selectableChatTools,
+  type ChatToolId,
+} from "@/lib/ai/tools/metadata";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -46,6 +58,15 @@ import {
   PromptInputTools,
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { PaperclipIcon, StopIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import {
@@ -76,7 +97,9 @@ function PureMultimodalInput({
   className,
   selectedVisibilityType,
   selectedModelId,
+  selectedToolIds,
   onModelChange,
+  onToolIdsChange,
   editingMessage,
   onCancelEdit,
   isLoading,
@@ -96,7 +119,9 @@ function PureMultimodalInput({
   className?: string;
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
+  selectedToolIds: ChatToolId[];
   onModelChange?: (modelId: string) => void;
+  onToolIdsChange?: Dispatch<SetStateAction<ChatToolId[]>>;
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
   isLoading?: boolean;
@@ -520,6 +545,10 @@ function PureMultimodalInput({
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
             />
+            <ToolSelectorCompact
+              onToolIdsChange={onToolIdsChange}
+              selectedToolIds={selectedToolIds}
+            />
           </PromptInputTools>
 
           {status === "submitted" ? (
@@ -562,6 +591,9 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+      return false;
+    }
+    if (!equal(prevProps.selectedToolIds, nextProps.selectedToolIds)) {
       return false;
     }
     if (prevProps.editingMessage !== nextProps.editingMessage) {
@@ -759,6 +791,89 @@ function PureModelSelectorCompact({
 }
 
 const ModelSelectorCompact = memo(PureModelSelectorCompact);
+
+function PureToolSelectorCompact({
+  selectedToolIds,
+  onToolIdsChange,
+}: {
+  selectedToolIds: ChatToolId[];
+  onToolIdsChange?: Dispatch<SetStateAction<ChatToolId[]>>;
+}) {
+  const selectedIds = normalizeSelectableChatToolIds(selectedToolIds);
+  const selectedIdSet = new Set(selectedIds);
+  const selectedTools = selectableChatTools.filter((tool) =>
+    selectedIdSet.has(tool.id)
+  );
+  const groupedTools = selectableChatTools.reduce<
+    Record<string, typeof selectableChatTools>
+  >((acc, tool) => {
+    if (!acc[tool.group]) {
+      acc[tool.group] = [];
+    }
+    acc[tool.group].push(tool);
+    return acc;
+  }, {});
+  const groupNames = Object.keys(groupedTools).sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          className="h-7 max-w-[220px] justify-between gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+          data-testid="tool-selector"
+          variant="ghost"
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            <WrenchIcon className="size-3.5 shrink-0" />
+            <span className="truncate">
+              {selectedTools.length > 0
+                ? selectedTools.map((tool) => tool.label).join(", ")
+                : "No tools"}
+            </span>
+          </span>
+          <ChevronDownIcon className="size-3.5 shrink-0 opacity-70" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[280px]">
+        {groupNames.map((groupName, index) => (
+          <div key={groupName}>
+            {index > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel>{groupName}</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              {groupedTools[groupName]?.map((tool) => (
+                <DropdownMenuCheckboxItem
+                  checked={selectedIdSet.has(tool.id)}
+                  className="flex flex-col items-start gap-0.5"
+                  key={tool.id}
+                  onCheckedChange={(checked) => {
+                    const nextIds = checked
+                      ? [...selectedIds, tool.id]
+                      : selectedIds.filter((id) => id !== tool.id);
+
+                    onToolIdsChange?.(
+                      nextIds.length > 0
+                        ? nextIds
+                        : defaultSelectableChatToolIds
+                    );
+                  }}
+                >
+                  <span>{tool.label}</span>
+                  <span className="pr-6 text-[11px] text-muted-foreground">
+                    {tool.description}
+                  </span>
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const ToolSelectorCompact = memo(PureToolSelectorCompact);
 
 function PureStopButton({
   stop,
