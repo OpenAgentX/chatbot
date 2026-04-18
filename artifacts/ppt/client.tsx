@@ -10,7 +10,7 @@ import {
   SparklesIcon,
   UndoIcon,
 } from "@/components/chat/icons";
-import { Editor } from "@/components/chat/text-editor";
+import { PptEditor } from "@/components/chat/ppt-editor";
 
 type PptArtifactMetadata = Record<string, never>;
 
@@ -65,16 +65,13 @@ export const pptArtifact = new Artifact<"ppt", PptArtifactMetadata>({
     }
 
     return (
-      <div className="flex flex-row px-4 py-8 md:px-16 md:py-12 lg:px-20">
-        <Editor
-          content={content}
-          currentVersionIndex={currentVersionIndex}
-          isCurrentVersion={isCurrentVersion}
-          onSaveContent={onSaveContent}
-          status={status}
-          suggestions={[]}
-        />
-      </div>
+      <PptEditor
+        content={content}
+        currentVersionIndex={currentVersionIndex}
+        isCurrentVersion={isCurrentVersion}
+        onSaveContent={onSaveContent}
+        status={status}
+      />
     );
   },
   actions: [

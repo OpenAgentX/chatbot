@@ -24,6 +24,7 @@ import {
   LoaderIcon,
 } from "./icons";
 import { ImageEditor } from "./image-editor";
+import { PptEditor } from "./ppt-editor";
 import { SpreadsheetEditor } from "./sheet-editor";
 import { Editor } from "./text-editor";
 
@@ -259,8 +260,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
     {
       "p-4 sm:px-10 sm:py-10":
         document.kind === "text" ||
-        document.kind === "report" ||
-        document.kind === "ppt",
+        document.kind === "report",
       "p-0": document.kind === "code",
     }
   );
@@ -279,9 +279,17 @@ const DocumentContent = ({ document }: { document: Document }) => {
   return (
     <div className={cn(containerClassName, "relative")}>
       {document.kind === "text" ||
-      document.kind === "report" ||
-      document.kind === "ppt" ? (
+      document.kind === "report" ? (
         <Editor {...commonProps} onSaveContent={handleSaveContent} />
+      ) : document.kind === "ppt" ? (
+        <PptEditor
+          content={document.content ?? ""}
+          currentVersionIndex={0}
+          isCurrentVersion={true}
+          isInline={true}
+          onSaveContent={handleSaveContent}
+          status={artifact.status}
+        />
       ) : document.kind === "code" ? (
         <div className="relative flex w-full flex-1">
           <div className="absolute inset-0">
