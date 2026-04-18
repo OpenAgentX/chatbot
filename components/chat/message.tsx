@@ -12,6 +12,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "../ai-elements/tool";
+import { ApexAgentCard } from "./apex-agents";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
@@ -20,6 +21,12 @@ import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
+
+const agentToolTitles: Record<string, string> = {
+  "tool-apexResearch": "Apex Research",
+  "tool-apexScholar": "Apex Scholar",
+  "tool-apexChart": "Apex Chart",
+};
 
 const PurePreviewMessage = ({
   addToolApprovalResponse,
@@ -296,6 +303,50 @@ const PurePreviewMessage = ({
                 }
               />
             )}
+          </ToolContent>
+        </Tool>
+      );
+    }
+
+    if (
+      type === "tool-apexResearch" ||
+      type === "tool-apexScholar" ||
+      type === "tool-apexChart"
+    ) {
+      const { toolCallId, state } = part;
+
+      if (state === "output-available") {
+        if (part.output && "error" in part.output) {
+          return (
+            <div
+              className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
+              key={toolCallId}
+            >
+              Error: {String(part.output.error)}
+            </div>
+          );
+        }
+
+        return (
+          <div className="w-[min(100%,760px)]" key={toolCallId}>
+            <ApexAgentCard output={part.output} />
+          </div>
+        );
+      }
+
+      return (
+        <Tool
+          className="w-[min(100%,680px)]"
+          defaultOpen={true}
+          key={toolCallId}
+        >
+          <ToolHeader
+            state={state}
+            title={agentToolTitles[type]}
+            type={type}
+          />
+          <ToolContent>
+            {state === "input-available" && <ToolInput input={part.input} />}
           </ToolContent>
         </Tool>
       );

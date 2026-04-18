@@ -1,11 +1,14 @@
 export type ChatToolId =
   | "getWeather"
+  | "apexResearch"
+  | "apexScholar"
+  | "apexChart"
   | "createDocument"
   | "editDocument"
   | "updateDocument"
   | "requestSuggestions";
 
-export type ChatToolGroup = "General" | "Documents";
+export type ChatToolGroup = "Agents" | "General" | "Documents";
 
 export type ChatToolMetadata = {
   id: ChatToolId;
@@ -17,6 +20,30 @@ export type ChatToolMetadata = {
 };
 
 export const chatToolRegistry: ChatToolMetadata[] = [
+  {
+    id: "apexResearch",
+    label: "Apex Research",
+    description: "生成企业董事会级战略分析",
+    group: "Agents",
+    selectable: true,
+    enabledByDefault: true,
+  },
+  {
+    id: "apexScholar",
+    label: "Apex Scholar",
+    description: "生成学术写作与论文结构化输出",
+    group: "Agents",
+    selectable: true,
+    enabledByDefault: true,
+  },
+  {
+    id: "apexChart",
+    label: "Apex Chart",
+    description: "根据方法文本和图示描述创建学术图表任务",
+    group: "Agents",
+    selectable: true,
+    enabledByDefault: true,
+  },
   {
     id: "getWeather",
     label: "Weather",

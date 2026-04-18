@@ -1,6 +1,9 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
 import type { ArtifactKind } from "@/components/chat/artifact";
+import type { apexChart } from "./ai/tools/apex-chart";
+import type { apexResearch } from "./ai/tools/apex-research";
+import type { apexScholar } from "./ai/tools/apex-scholar";
 import type { createDocument } from "./ai/tools/create-document";
 import type { getWeather } from "./ai/tools/get-weather";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
@@ -13,6 +16,9 @@ export const messageMetadataSchema = z.object({
 
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 
+type apexResearchTool = InferUITool<typeof apexResearch>;
+type apexScholarTool = InferUITool<typeof apexScholar>;
+type apexChartTool = InferUITool<typeof apexChart>;
 type weatherTool = InferUITool<typeof getWeather>;
 type createDocumentTool = InferUITool<ReturnType<typeof createDocument>>;
 type updateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;
@@ -21,6 +27,9 @@ type requestSuggestionsTool = InferUITool<
 >;
 
 export type ChatTools = {
+  apexResearch: apexResearchTool;
+  apexScholar: apexScholarTool;
+  apexChart: apexChartTool;
   getWeather: weatherTool;
   createDocument: createDocumentTool;
   updateDocument: updateDocumentTool;

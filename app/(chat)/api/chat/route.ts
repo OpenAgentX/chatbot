@@ -15,6 +15,9 @@ import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { getAllGatewayModels, resolveChatModel } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { apexChart } from "@/lib/ai/tools/apex-chart";
+import { apexResearch } from "@/lib/ai/tools/apex-research";
+import { apexScholar } from "@/lib/ai/tools/apex-scholar";
 import { getEffectiveActiveChatToolIds } from "@/lib/ai/tools/metadata";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
@@ -206,6 +209,9 @@ export async function POST(request: Request) {
             }),
           },
           tools: {
+            apexResearch,
+            apexScholar,
+            apexChart,
             getWeather,
             createDocument: createDocument({
               session,

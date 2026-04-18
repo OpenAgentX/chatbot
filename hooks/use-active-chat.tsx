@@ -85,7 +85,10 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
 
   const [currentToolIds, setCurrentToolIds] = useLocalStorage<ChatToolId[]>(
     "chat-tools",
-    defaultSelectableChatToolIds
+    defaultSelectableChatToolIds,
+    {
+      initializeWithValue: false,
+    }
   );
   const currentToolIdsRef = useRef(currentToolIds);
   useEffect(() => {
