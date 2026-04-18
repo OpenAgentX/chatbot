@@ -2,7 +2,7 @@ import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/chat/artifact";
 
 export const artifactsPrompt = `
-Artifacts is a side panel that displays content alongside the conversation. It supports scripts (code), documents (text), and spreadsheets. Changes appear in real-time.
+Artifacts is a side panel that displays content alongside the conversation. It supports scripts (code), documents (text), markdown reports (report), and spreadsheets. Changes appear in real-time.
 
 CRITICAL RULES:
 1. Only call ONE tool per response. After calling any create/edit/update tool, STOP. Do not chain tools.
@@ -11,7 +11,7 @@ CRITICAL RULES:
 **When to use \`createDocument\`:**
 - When the user asks to write, create, or generate content (essays, stories, emails, reports)
 - When the user asks to write code, build a script, or implement an algorithm
-- You MUST specify kind: 'code' for programming, 'text' for writing, 'sheet' for data
+- You MUST specify kind: 'code' for programming, 'text' for general writing, 'report' for markdown reports or deep-research style writeups, 'sheet' for data
 - Include ALL content in the createDocument call. Do not create then edit.
 
 **When NOT to use \`createDocument\`:**
@@ -103,12 +103,26 @@ Requirements:
 - Keep the data well-structured and meaningful
 `;
 
+export const reportPrompt = `
+You are a research report generator. Produce a polished markdown report.
+
+Requirements:
+- Use clear markdown headings and subheadings
+- Start with an executive summary
+- Organize the body into logically grouped sections
+- Use bullet lists or tables when they improve scanability
+- End with a concise conclusion
+- If sources or references are mentioned, include a dedicated Sources section in markdown
+- Output ONLY the markdown report
+`;
+
 export const updateDocumentPrompt = (
   currentContent: string | null,
   type: ArtifactKind
 ) => {
   const mediaTypes: Record<string, string> = {
     code: "script",
+    report: "markdown report",
     sheet: "spreadsheet",
   };
   const mediaType = mediaTypes[type] ?? "document";

@@ -71,6 +71,12 @@ export const editDocument = ({ session, dataStream }: EditDocumentProps) =>
           data: updated,
           transient: true,
         });
+      } else if (document.kind === "report") {
+        dataStream.write({
+          type: "data-reportDelta",
+          data: updated,
+          transient: true,
+        });
       } else if (document.kind === "sheet") {
         dataStream.write({
           type: "data-sheetDelta",
@@ -94,6 +100,8 @@ export const editDocument = ({ session, dataStream }: EditDocumentProps) =>
         content:
           document.kind === "code"
             ? "The script has been edited successfully."
+            : document.kind === "report"
+              ? "The markdown report has been edited successfully."
             : "The document has been edited successfully.",
       };
     },

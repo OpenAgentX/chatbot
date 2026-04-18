@@ -257,7 +257,8 @@ const DocumentContent = ({ document }: { document: Document }) => {
   const containerClassName = cn(
     "h-[257px] overflow-hidden rounded-b-2xl border border-t-0 border-border/50 dark:bg-muted",
     {
-      "p-4 sm:px-10 sm:py-10": document.kind === "text",
+      "p-4 sm:px-10 sm:py-10":
+        document.kind === "text" || document.kind === "report",
       "p-0": document.kind === "code",
     }
   );
@@ -275,7 +276,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
 
   return (
     <div className={cn(containerClassName, "relative")}>
-      {document.kind === "text" ? (
+      {document.kind === "text" || document.kind === "report" ? (
         <Editor {...commonProps} onSaveContent={handleSaveContent} />
       ) : document.kind === "code" ? (
         <div className="relative flex w-full flex-1">

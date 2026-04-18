@@ -71,6 +71,8 @@ export const updateDocument = ({
         content:
           document.kind === "code"
             ? "The script has been updated successfully."
+            : document.kind === "report"
+              ? "The markdown report has been updated successfully."
             : "The document has been updated successfully.",
       };
     },
