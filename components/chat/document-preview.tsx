@@ -258,7 +258,9 @@ const DocumentContent = ({ document }: { document: Document }) => {
     "h-[257px] overflow-hidden rounded-b-2xl border border-t-0 border-border/50 dark:bg-muted",
     {
       "p-4 sm:px-10 sm:py-10":
-        document.kind === "text" || document.kind === "report",
+        document.kind === "text" ||
+        document.kind === "report" ||
+        document.kind === "ppt",
       "p-0": document.kind === "code",
     }
   );
@@ -276,7 +278,9 @@ const DocumentContent = ({ document }: { document: Document }) => {
 
   return (
     <div className={cn(containerClassName, "relative")}>
-      {document.kind === "text" || document.kind === "report" ? (
+      {document.kind === "text" ||
+      document.kind === "report" ||
+      document.kind === "ppt" ? (
         <Editor {...commonProps} onSaveContent={handleSaveContent} />
       ) : document.kind === "code" ? (
         <div className="relative flex w-full flex-1">

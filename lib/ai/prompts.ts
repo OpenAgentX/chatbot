@@ -2,7 +2,7 @@ import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/chat/artifact";
 
 export const artifactsPrompt = `
-Artifacts is a side panel that displays content alongside the conversation. It supports scripts (code), documents (text), markdown reports (report), and spreadsheets. Changes appear in real-time.
+Artifacts is a side panel that displays content alongside the conversation. It supports scripts (code), documents (text), markdown reports (report), presentation decks (ppt), and spreadsheets. Changes appear in real-time.
 
 CRITICAL RULES:
 1. Only call ONE tool per response. After calling any create/edit/update tool, STOP. Do not chain tools.
@@ -11,7 +11,7 @@ CRITICAL RULES:
 **When to use \`createDocument\`:**
 - When the user asks to write, create, or generate content (essays, stories, emails, reports)
 - When the user asks to write code, build a script, or implement an algorithm
-- You MUST specify kind: 'code' for programming, 'text' for general writing, 'report' for markdown reports or deep-research style writeups, 'sheet' for data
+- You MUST specify kind: 'code' for programming, 'text' for general writing, 'report' for markdown reports or deep-research style writeups, 'ppt' for slide decks or presentation outlines, 'sheet' for data
 - Include ALL content in the createDocument call. Do not create then edit.
 
 **When NOT to use \`createDocument\`:**
@@ -116,6 +116,19 @@ Requirements:
 - Output ONLY the markdown report
 `;
 
+export const pptPrompt = `
+You are a presentation deck generator. Produce a slide-by-slide deck in markdown.
+
+Requirements:
+- Use a single H1 or strong title slide at the start
+- Separate slides with '---'
+- For each slide, use a short title and 3-6 concise bullets
+- Keep language presentation-ready, not essay-like
+- Include a final summary or next-steps slide when appropriate
+- If helpful, include short speaker notes under a 'Notes:' label
+- Output ONLY the markdown deck
+`;
+
 export const updateDocumentPrompt = (
   currentContent: string | null,
   type: ArtifactKind
@@ -123,6 +136,7 @@ export const updateDocumentPrompt = (
   const mediaTypes: Record<string, string> = {
     code: "script",
     report: "markdown report",
+    ppt: "presentation deck",
     sheet: "spreadsheet",
   };
   const mediaType = mediaTypes[type] ?? "document";

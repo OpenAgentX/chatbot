@@ -73,6 +73,8 @@ export const updateDocument = ({
             ? "The script has been updated successfully."
             : document.kind === "report"
               ? "The markdown report has been updated successfully."
+              : document.kind === "ppt"
+                ? "The presentation deck has been updated successfully."
             : "The document has been updated successfully.",
       };
     },
