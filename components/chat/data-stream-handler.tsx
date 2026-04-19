@@ -10,6 +10,7 @@ import { getChatHistoryPaginationKey } from "./sidebar-history";
 
 export function DataStreamHandler() {
   const { dataStream, setDataStream } = useDataStream();
+  const { pushAgentEvent } = useDataStream();
   const { mutate } = useSWRConfig();
 
   const { artifact, setArtifact, setMetadata } = useArtifact();
@@ -23,6 +24,11 @@ export function DataStreamHandler() {
     setDataStream([]);
 
     for (const delta of newDeltas) {
+      if (delta.type === "data-agentEvent") {
+        pushAgentEvent(delta.data);
+        continue;
+      }
+
       if (delta.type === "data-chat-title") {
         mutate(unstable_serialize(getChatHistoryPaginationKey));
         continue;
@@ -85,7 +91,15 @@ export function DataStreamHandler() {
         }
       });
     }
-  }, [dataStream, setArtifact, setMetadata, artifact, setDataStream, mutate]);
+  }, [
+    dataStream,
+    setArtifact,
+    setMetadata,
+    artifact,
+    setDataStream,
+    mutate,
+    pushAgentEvent,
+  ]);
 
   return null;
 }

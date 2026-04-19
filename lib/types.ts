@@ -16,9 +16,18 @@ export const messageMetadataSchema = z.object({
 
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 
-type apexResearchTool = InferUITool<typeof apexResearch>;
-type apexScholarTool = InferUITool<typeof apexScholar>;
-type apexChartTool = InferUITool<typeof apexChart>;
+export type AgentProcessEvent = {
+  runId: string;
+  agent: string;
+  seq: number;
+  status: "thinking" | "tool_call" | "tool_result" | "completed";
+  title: string;
+  detail: string;
+};
+
+type apexResearchTool = InferUITool<ReturnType<typeof apexResearch>>;
+type apexScholarTool = InferUITool<ReturnType<typeof apexScholar>>;
+type apexChartTool = InferUITool<ReturnType<typeof apexChart>>;
 type weatherTool = InferUITool<typeof getWeather>;
 type createDocumentTool = InferUITool<ReturnType<typeof createDocument>>;
 type updateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;
@@ -45,6 +54,7 @@ export type CustomUIDataTypes = {
   codeDelta: string;
   suggestion: Suggestion;
   appendMessage: string;
+  agentEvent: AgentProcessEvent;
   id: string;
   title: string;
   kind: ArtifactKind;

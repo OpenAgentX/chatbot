@@ -33,7 +33,7 @@ export default function AuthLayout({
           Powered by
           <VercelIcon size={14} />
           <span className="font-medium text-muted-foreground">
-            OpenAI-Compatible API
+            GPUNexus
           </span>
         </div>
         <div className="flex-1 pt-4">

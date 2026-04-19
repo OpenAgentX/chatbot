@@ -22,11 +22,13 @@ import { cn } from "@/lib/utils";
 import { Artifact } from "./artifact";
 import { ChatHeader } from "./chat-header";
 import { DataStreamHandler } from "./data-stream-handler";
+import { useDataStream } from "./data-stream-provider";
 import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 
 export function ChatShell() {
+  const { resetAgentRuns } = useDataStream();
   const {
     chatId,
     messages,
@@ -65,11 +67,12 @@ export function ChatShell() {
     if (prevChatIdRef.current !== chatId) {
       prevChatIdRef.current = chatId;
       stopRef.current();
+      resetAgentRuns();
       setArtifact(initialArtifactData);
       setEditingMessage(null);
       setAttachments([]);
     }
-  }, [chatId, setArtifact]);
+  }, [chatId, resetAgentRuns, setArtifact]);
 
   return (
     <>

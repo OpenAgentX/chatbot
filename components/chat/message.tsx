@@ -55,7 +55,7 @@ const PurePreviewMessage = ({
     (part) => part.type === "file"
   );
 
-  useDataStream();
+  const { agentRuns, activeRunIdByAgent } = useDataStream();
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
@@ -314,6 +314,15 @@ const PurePreviewMessage = ({
       type === "tool-apexChart"
     ) {
       const { toolCallId, state } = part;
+      const agentName = agentToolTitles[type];
+      const outputRunId =
+        state === "output-available" && part.output && "runId" in part.output
+          ? part.output.runId
+          : undefined;
+      const activeRunId = outputRunId ?? activeRunIdByAgent[agentName];
+      const processEvents = activeRunId
+        ? agentRuns[activeRunId]?.events
+        : undefined;
 
       if (state === "output-available") {
         if (part.output && "error" in part.output) {
@@ -329,7 +338,7 @@ const PurePreviewMessage = ({
 
         return (
           <div className="w-[min(100%,760px)]" key={toolCallId}>
-            <ApexAgentCard output={part.output} />
+            <ApexAgentCard output={part.output} processEvents={processEvents} />
           </div>
         );
       }
@@ -342,11 +351,38 @@ const PurePreviewMessage = ({
         >
           <ToolHeader
             state={state}
-            title={agentToolTitles[type]}
+            title={agentName}
             type={type}
           />
           <ToolContent>
             {state === "input-available" && <ToolInput input={part.input} />}
+            {processEvents && processEvents.length > 0 && (
+              <div className="space-y-2">
+                <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                  Live Agent Process
+                </div>
+                <div className="space-y-3 rounded-md bg-muted/40 p-3">
+                  {processEvents.map((event) => (
+                    <div
+                      className="flex gap-3"
+                      key={`${event.runId}-${event.seq}`}
+                    >
+                      <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px] font-medium text-foreground/80">
+                        {event.seq}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-foreground">
+                          {event.title}
+                        </div>
+                        <div className="mt-1 text-sm leading-6 text-muted-foreground">
+                          {event.detail}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </ToolContent>
         </Tool>
       );
