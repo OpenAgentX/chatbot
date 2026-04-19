@@ -1,5 +1,5 @@
 import type { UIMessageStreamWriter } from "ai";
-import type { AgentProcessEvent, ChatMessage } from "@/lib/types";
+import type { AgentProcessEvent } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 
 export function createAgentRunId() {
@@ -11,7 +11,7 @@ export async function sleep(ms: number) {
 }
 
 export function writeAgentEvent(
-  dataStream: UIMessageStreamWriter<ChatMessage>,
+  dataStream: UIMessageStreamWriter<any>,
   event: AgentProcessEvent
 ) {
   dataStream.write({

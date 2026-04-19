@@ -23,6 +23,7 @@ export type AgentProcessEvent = {
   status: "thinking" | "tool_call" | "tool_result" | "completed";
   title: string;
   detail: string;
+  content?: string;
 };
 
 type apexResearchTool = InferUITool<ReturnType<typeof apexResearch>>;

@@ -1,6 +1,5 @@
 import { tool, type UIMessageStreamWriter } from "ai";
 import { z } from "zod";
-import type { ChatMessage } from "@/lib/types";
 import {
   createAgentRunId,
   sleep,
@@ -10,7 +9,7 @@ import {
 export const apexChart = ({
   dataStream,
 }: {
-  dataStream: UIMessageStreamWriter<ChatMessage>;
+  dataStream: UIMessageStreamWriter<any>;
 }) =>
   tool({
     description:

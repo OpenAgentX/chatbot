@@ -2,6 +2,7 @@
 
 import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
+import { MessageResponse } from "@/components/ai-elements/message";
 import type { AgentProcessEvent } from "@/lib/types";
 import {
   BrainIcon,
@@ -22,11 +23,13 @@ type ApexResearchOutput = {
   geography: string;
   timeframe: string;
   summary: string;
-  keyFindings: string[];
-  strategicPriorities: { priority: string; rationale: string }[];
-  risks: string[];
-  boardQuestions: string[];
-  recommendation: string;
+  reportMarkdown?: string;
+  sections?: { step: number; title: string; content: string }[];
+  keyFindings?: string[];
+  strategicPriorities?: { priority: string; rationale: string }[];
+  risks?: string[];
+  boardQuestions?: string[];
+  recommendation?: string;
   outputs?: AgentStepOutput[];
 };
 
@@ -268,6 +271,11 @@ export function ApexAgentProcessLog({
                       <div className="mt-2 text-sm leading-6 text-current/80">
                         {event.detail}
                       </div>
+                      {event.content && (
+                        <div className="mt-3 rounded-lg border border-current/15 bg-black/10 p-3 text-sm text-current/90">
+                          <MessageResponse>{event.content}</MessageResponse>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -287,6 +295,13 @@ function ApexResearchCard({
   data: ApexResearchOutput;
   processEvents?: AgentProcessEvent[];
 }) {
+  const hasStructuredSummary =
+    (data.keyFindings?.length ?? 0) > 0 ||
+    (data.strategicPriorities?.length ?? 0) > 0 ||
+    (data.risks?.length ?? 0) > 0 ||
+    (data.boardQuestions?.length ?? 0) > 0 ||
+    Boolean(data.recommendation);
+
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-4 shadow-lg">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.14),transparent_28%)]" />
@@ -316,53 +331,72 @@ function ApexResearchCard({
 
         <ApexAgentProcessLog events={processEvents} />
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
-            <SectionTitle>Key Findings</SectionTitle>
-            <div className="mt-3">
-              <BulletList items={data.keyFindings} />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
-            <SectionTitle>Risks</SectionTitle>
-            <div className="mt-3">
-              <BulletList items={data.risks} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
-          <SectionTitle>Strategic Priorities</SectionTitle>
-          <div className="mt-3 space-y-3">
-            {data.strategicPriorities.map((item) => (
-              <div className="rounded-xl bg-black/15 p-3" key={item.priority}>
-                <div className="font-medium text-sm text-white">
-                  {item.priority}
+        {hasStructuredSummary && (
+          <>
+            {!!data.keyFindings?.length && !!data.risks?.length && (
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
+                  <SectionTitle>Key Findings</SectionTitle>
+                  <div className="mt-3">
+                    <BulletList items={data.keyFindings} />
+                  </div>
                 </div>
-                <div className="mt-1 text-sm leading-6 text-white/75">
-                  {item.rationale}
+                <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
+                  <SectionTitle>Risks</SectionTitle>
+                  <div className="mt-3">
+                    <BulletList items={data.risks} />
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
+
+            {!!data.strategicPriorities?.length && (
+              <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
+                <SectionTitle>Strategic Priorities</SectionTitle>
+                <div className="mt-3 space-y-3">
+                  {data.strategicPriorities.map((item) => (
+                    <div className="rounded-xl bg-black/15 p-3" key={item.priority}>
+                      <div className="font-medium text-sm text-white">
+                        {item.priority}
+                      </div>
+                      <div className="mt-1 text-sm leading-6 text-white/75">
+                        {item.rationale}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
         <OutputTimeline outputs={data.outputs} />
 
-        <div className="grid gap-3 md:grid-cols-[1.25fr_0.95fr]">
+        {data.reportMarkdown && (
           <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
-            <SectionTitle>Board Questions</SectionTitle>
-            <div className="mt-3">
-              <BulletList items={data.boardQuestions} />
+            <SectionTitle>Strategic Report</SectionTitle>
+            <div className="prose prose-invert mt-3 max-w-none text-sm leading-6">
+              <MessageResponse>{data.reportMarkdown}</MessageResponse>
             </div>
           </div>
-          <div className="rounded-2xl border border-cyan-300/16 bg-cyan-300/8 p-3.5">
-            <SectionTitle>Recommendation</SectionTitle>
-            <div className="mt-3 text-sm leading-6 text-white/92">
-              {data.recommendation}
+        )}
+
+        {hasStructuredSummary && !!data.boardQuestions?.length && !!data.recommendation && (
+          <div className="grid gap-3 md:grid-cols-[1.25fr_0.95fr]">
+            <div className="rounded-2xl border border-white/10 bg-white/6 p-3.5">
+              <SectionTitle>Board Questions</SectionTitle>
+              <div className="mt-3">
+                <BulletList items={data.boardQuestions} />
+              </div>
+            </div>
+            <div className="rounded-2xl border border-cyan-300/16 bg-cyan-300/8 p-3.5">
+              <SectionTitle>Recommendation</SectionTitle>
+              <div className="mt-3 text-sm leading-6 text-white/92">
+                {data.recommendation}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
