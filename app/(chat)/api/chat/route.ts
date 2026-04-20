@@ -209,7 +209,7 @@ export async function POST(request: Request) {
             }),
           },
           tools: {
-            apexResearch: apexResearch({ dataStream }),
+            apexResearch: apexResearch({ session, dataStream }),
             apexScholar: apexScholar({ dataStream }),
             apexChart: apexChart({ dataStream }),
             getWeather,

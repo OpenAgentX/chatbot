@@ -12,7 +12,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "../ai-elements/tool";
-import { ApexAgentCard } from "./apex-agents";
+import { ApexAgentCard, ApexAgentProcessLog } from "./apex-agents";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
@@ -332,6 +332,24 @@ const PurePreviewMessage = ({
               key={toolCallId}
             >
               Error: {String(part.output.error)}
+            </div>
+          );
+        }
+
+        if (
+          type === "tool-apexResearch" &&
+          part.output &&
+          "id" in part.output &&
+          "title" in part.output &&
+          "kind" in part.output
+        ) {
+          return (
+            <div className="w-[min(100%,760px)] space-y-3" key={toolCallId}>
+              <DocumentPreview
+                isReadonly={isReadonly}
+                result={part.output}
+              />
+              <ApexAgentProcessLog events={processEvents} />
             </div>
           );
         }

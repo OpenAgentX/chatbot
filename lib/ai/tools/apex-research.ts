@@ -1,6 +1,9 @@
 import { tool, type UIMessageStreamWriter } from "ai";
+import type { Session } from "next-auth";
 import { z } from "zod";
 import { generateStrategicReportStream } from "@/services/geminiService";
+import { saveDocument } from "@/lib/db/queries";
+import { generateUUID } from "@/lib/utils";
 import { createAgentRunId, writeAgentEvent } from "./mock-agent-progress";
 
 type ResearchSection = {
@@ -62,8 +65,10 @@ function buildSectionBullets(content: string) {
 }
 
 export const apexResearch = ({
+  session,
   dataStream,
 }: {
+  session: Session;
   dataStream: UIMessageStreamWriter<any>;
 }) =>
   tool({
@@ -97,11 +102,37 @@ export const apexResearch = ({
       geography,
       timeframe,
     }) => {
+      const documentId = generateUUID();
+      const documentTitle = `${company} Strategic Research Report`;
       const market = geography ?? "Global";
       const horizon = timeframe ?? "24 months";
       const runId = createAgentRunId();
       const sections: ResearchSection[] = [];
       let seq = 1;
+
+      dataStream.write({
+        type: "data-kind",
+        data: "report",
+        transient: true,
+      });
+
+      dataStream.write({
+        type: "data-id",
+        data: documentId,
+        transient: true,
+      });
+
+      dataStream.write({
+        type: "data-title",
+        data: documentTitle,
+        transient: true,
+      });
+
+      dataStream.write({
+        type: "data-clear",
+        data: null,
+        transient: true,
+      });
 
       writeAgentEvent(dataStream, {
         runId,
@@ -131,6 +162,12 @@ export const apexResearch = ({
             step: sections.length + 1,
             title: update.title,
             content,
+          });
+
+          dataStream.write({
+            type: "data-reportDelta",
+            data: `${content.trim()}\n\n`,
+            transient: true,
           });
         }
 
@@ -169,7 +206,22 @@ export const apexResearch = ({
         detail: `Completed ${sections.length} research sections for ${company}.`,
       });
 
+      if (session.user?.id) {
+        await saveDocument({
+          id: documentId,
+          title: documentTitle,
+          kind: "report",
+          content: reportMarkdown,
+          userId: session.user.id,
+        });
+      }
+
+      dataStream.write({ type: "data-finish", data: null, transient: true });
+
       return {
+        id: documentId,
+        title: documentTitle,
+        kind: "report" as const,
         runId,
         agent: "Apex Research",
         provider: "google-gemini",
