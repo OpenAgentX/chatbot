@@ -256,19 +256,7 @@ export const apexResearch = ({
         id: documentId,
         title: documentTitle,
         kind: "report" as const,
-        runId,
-        agent: "Apex Research",
-        provider: "google-gemini",
-        simulated: false,
-        generatedAt: new Date().toISOString(),
-        company,
-        industry: industry ?? "Not specified",
-        objective:
-          objective ?? `Board-level strategic analysis for ${company}`,
-        geography: market,
-        timeframe: horizon,
-        summary,
-        outputs,
+        content: "A markdown report was created and is now visible to the user.",
       };
     },
   });
