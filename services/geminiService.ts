@@ -23,7 +23,7 @@ const generateSectionWithRetry = async (
         try {
             // Using Gemini 3 Pro with Deep Thinking enabled for research
             const response = await ai.models.generateContent({
-                model: 'gemini-3-pro-preview',
+                model: 'gemini-3.1-flash-lite-preview',
                 contents: prompt,
                 config: {
                     tools: [{ googleSearch: {} }],

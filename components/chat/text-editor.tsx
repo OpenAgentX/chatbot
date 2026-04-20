@@ -1,7 +1,6 @@
 "use client";
 
 import { exampleSetup } from "prosemirror-example-setup";
-import { inputRules } from "prosemirror-inputrules";
 import { EditorState } from "prosemirror-state";
 import { type Decoration, DecorationSet, EditorView } from "prosemirror-view";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -11,7 +10,6 @@ import type { Suggestion } from "@/lib/db/schema";
 import {
   documentSchema,
   handleTransaction,
-  headingRule,
 } from "@/lib/editor/config";
 import {
   buildContentFromDocument,
@@ -57,16 +55,6 @@ function PureEditor({
         doc: buildDocumentFromContent(content),
         plugins: [
           ...exampleSetup({ schema: documentSchema, menuBar: false }),
-          inputRules({
-            rules: [
-              headingRule(1),
-              headingRule(2),
-              headingRule(3),
-              headingRule(4),
-              headingRule(5),
-              headingRule(6),
-            ],
-          }),
           suggestionsPlugin,
         ],
       });
