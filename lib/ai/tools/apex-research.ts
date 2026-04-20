@@ -268,8 +268,6 @@ export const apexResearch = ({
         geography: market,
         timeframe: horizon,
         summary,
-        reportMarkdown,
-        sections,
         outputs,
       };
     },

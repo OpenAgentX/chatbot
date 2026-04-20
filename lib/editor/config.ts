@@ -8,8 +8,85 @@ import type { MutableRefObject } from "react";
 
 import { buildContentFromDocument } from "./functions";
 
+const tableNodes = {
+  table: {
+    content: "table_row+",
+    group: "block",
+    isolating: true,
+    parseDOM: [{ tag: "table" }],
+    toDOM() {
+      return ["table", ["tbody", 0]] as const;
+    },
+  },
+  table_row: {
+    content: "(table_header | table_cell)+",
+    parseDOM: [{ tag: "tr" }],
+    toDOM() {
+      return ["tr", 0] as const;
+    },
+  },
+  table_cell: {
+    attrs: { align: { default: null } },
+    content: "block+",
+    isolating: true,
+    parseDOM: [
+      {
+        tag: "td",
+        getAttrs: (dom: any) => {
+          if (!(dom instanceof HTMLElement)) {
+            return null;
+          }
+
+          return {
+            align: dom.style.textAlign || dom.getAttribute("align") || null,
+          };
+        },
+      },
+    ],
+    toDOM(node: any) {
+      const attrs = node.attrs.align
+        ? { style: `text-align: ${node.attrs.align}` }
+        : {};
+
+      return ["td", attrs, 0] as const;
+    },
+  },
+  table_header: {
+    attrs: { align: { default: null } },
+    content: "block+",
+    isolating: true,
+    parseDOM: [
+      {
+        tag: "th",
+        getAttrs: (dom: any) => {
+          if (!(dom instanceof HTMLElement)) {
+            return null;
+          }
+
+          return {
+            align: dom.style.textAlign || dom.getAttribute("align") || null,
+          };
+        },
+      },
+    ],
+    toDOM(node: any) {
+      const attrs = node.attrs.align
+        ? { style: `text-align: ${node.attrs.align}` }
+        : {};
+
+      return ["th", attrs, 0] as const;
+    },
+  },
+};
+
+const baseNodes = addListNodes(
+  schema.spec.nodes as any,
+  "paragraph block*",
+  "block"
+) as any;
+
 export const documentSchema = new Schema({
-  nodes: addListNodes(schema.spec.nodes, "paragraph block*", "block"),
+  nodes: baseNodes.append(tableNodes as any),
   marks: schema.spec.marks,
 });
 

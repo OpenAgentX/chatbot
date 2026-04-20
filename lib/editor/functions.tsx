@@ -1,7 +1,10 @@
 "use client";
 
-import { defaultMarkdownSerializer } from "prosemirror-markdown";
-import { DOMParser, type Node } from "prosemirror-model";
+import {
+  MarkdownSerializer,
+  defaultMarkdownSerializer,
+} from "prosemirror-markdown";
+import { DOMParser, type Node as ProseMirrorNode } from "prosemirror-model";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
 import { renderToString } from "react-dom/server";
 
@@ -9,6 +12,72 @@ import { MessageResponse } from "@/components/ai-elements/message";
 
 import { documentSchema } from "./config";
 import type { UISuggestion } from "./suggestions";
+
+function getTableAlignmentMarker(align: string | null | undefined) {
+  switch (align) {
+    case "left":
+      return ":---";
+    case "center":
+      return ":---:";
+    case "right":
+      return "---:";
+    default:
+      return "---";
+  }
+}
+
+function serializeTableCellContent(cell: ProseMirrorNode) {
+  return markdownSerializer
+    .serialize(cell)
+    .trim()
+    .replace(/\n+/g, " ")
+    .replace(/\|/g, "\\|");
+}
+
+const markdownSerializer = new MarkdownSerializer(
+  {
+    ...defaultMarkdownSerializer.nodes,
+    table(state, node) {
+      const rows: string[][] = [];
+
+      node.forEach((row) => {
+        const cells: string[] = [];
+
+        row.forEach((cell) => {
+          cells.push(serializeTableCellContent(cell));
+        });
+
+        rows.push(cells);
+      });
+
+      if (rows.length === 0) {
+        state.closeBlock(node);
+        return;
+      }
+
+      const columnCount = Math.max(...rows.map((row) => row.length), 1);
+      const normalizedRows = rows.map((row) =>
+        Array.from({ length: columnCount }, (_, index) => row[index] ?? "")
+      );
+      const separatorRow = Array.from({ length: columnCount }, (_, index) =>
+        getTableAlignmentMarker(node.firstChild?.maybeChild(index)?.attrs.align)
+      );
+
+      state.write(`| ${normalizedRows[0].join(" | ")} |`);
+      state.ensureNewLine();
+      state.write(`| ${separatorRow.join(" | ")} |`);
+
+      for (const row of normalizedRows.slice(1)) {
+        state.ensureNewLine();
+        state.write(`| ${row.join(" | ")} |`);
+      }
+
+      state.closeBlock(node);
+    },
+  },
+  defaultMarkdownSerializer.marks,
+  defaultMarkdownSerializer.options
+);
 
 export const buildDocumentFromContent = (content: string) => {
   const parser = DOMParser.fromSchema(documentSchema);
@@ -20,8 +89,8 @@ export const buildDocumentFromContent = (content: string) => {
   return parser.parse(tempContainer);
 };
 
-export const buildContentFromDocument = (document: Node) => {
-  return defaultMarkdownSerializer.serialize(document);
+export const buildContentFromDocument = (document: ProseMirrorNode) => {
+  return markdownSerializer.serialize(document);
 };
 
 export const createDecorations = (
