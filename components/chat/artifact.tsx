@@ -26,6 +26,7 @@ import { fetcher } from "@/lib/utils";
 import { useSidebar } from "../ui/sidebar";
 import { ArtifactActions } from "./artifact-actions";
 import { ArtifactCloseButton } from "./artifact-close-button";
+import { ArtifactExportMenu } from "./artifact-export";
 import { LoaderIcon } from "./icons";
 import { Toolbar } from "./toolbar";
 import { VersionFooter } from "./version-footer";
@@ -347,6 +348,14 @@ function PureArtifact({
               </div>
             </div>
           </div>
+          <ArtifactExportMenu
+            artifact={artifact}
+            content={
+              isCurrentVersion
+                ? artifact.content
+                : getDocumentContentById(currentVersionIndex)
+            }
+          />
         </div>
       )}
       <div
