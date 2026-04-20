@@ -59,14 +59,14 @@ export const translateReportToChinese = async (englishMarkdown: string): Promise
 
 export const generateStrategicReportStream = async (
     productName: string,
-    onProgress: (update: { title: string; status: 'generating' | 'completed'; content?: string }) => void
+    onProgress: (update: { title: string; status: 'generating' | 'completed'; content?: string }) => void | Promise<void>
 ): Promise<void> => {
     try {
         const ai = new GoogleGenAI({ apiKey: getApiKey() });
         const allSources: any[] = [];
 
         for (const section of REPORT_SECTIONS) {
-            onProgress({ title: section.title, status: 'generating' });
+            await onProgress({ title: section.title, status: 'generating' });
 
             const filledPreamble = PROMPT_PREAMBLE.replace(/{{PRODUCT_NAME}}/g, productName);
             const filledSectionPrompt = section.prompt.replace(/{{PRODUCT_NAME}}/g, productName);
@@ -79,11 +79,11 @@ export const generateStrategicReportStream = async (
             
             allSources.push(...sources);
 
-            onProgress({ title: section.title, status: 'completed', content });
+            await onProgress({ title: section.title, status: 'completed', content });
             await delay(500);
         }
 
-        onProgress({ title: 'Data Sources', status: 'generating' });
+        await onProgress({ title: 'Data Sources', status: 'generating' });
         const sourceMap = new Map<string, string>();
         allSources.forEach(chunk => {
             if (chunk?.web?.uri && chunk?.web?.title) {
@@ -97,7 +97,7 @@ export const generateStrategicReportStream = async (
                 .map(([uri, title]) => `- [${title}](${uri})`)
                 .join('\n')}`;
         }
-        onProgress({ title: 'Data Sources', status: 'completed', content: sourcesMarkdown });
+        await onProgress({ title: 'Data Sources', status: 'completed', content: sourcesMarkdown });
 
     } catch (error) {
         console.error("Error in Deep Research process:", error);

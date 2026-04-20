@@ -12,6 +12,44 @@ type ResearchSection = {
   content: string;
 };
 
+const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+function chunkMarkdownForStreaming(markdown: string) {
+  const normalized = markdown.trim();
+
+  if (!normalized) {
+    return [];
+  }
+
+  const tokens = normalized.match(/\S+\s*/g) ?? [normalized];
+  const chunkSize = 4;
+  const chunks: string[] = [];
+
+  for (let index = 0; index < tokens.length; index += chunkSize) {
+    chunks.push(tokens.slice(index, index + chunkSize).join(""));
+  }
+
+  return chunks;
+}
+
+async function streamReportSectionDelta(
+  dataStream: UIMessageStreamWriter<any>,
+  content: string
+) {
+  const chunks = chunkMarkdownForStreaming(`${content.trim()}\n\n`);
+
+  for (const chunk of chunks) {
+    dataStream.write({
+      type: "data-reportDelta",
+      data: chunk,
+      transient: true,
+    });
+
+    await sleep(18);
+  }
+}
+
 function stripMarkdown(markdown: string) {
   return markdown
     .replace(/```[\s\S]*?```/g, "")
@@ -143,7 +181,7 @@ export const apexResearch = ({
         detail: `Preparing a deep-research brief for ${company} across ${market} with a ${horizon} planning horizon.`,
       });
 
-      await generateStrategicReportStream(company, (update) => {
+      await generateStrategicReportStream(company, async (update) => {
         if (update.status === "generating") {
           writeAgentEvent(dataStream, {
             runId,
@@ -164,11 +202,7 @@ export const apexResearch = ({
             content,
           });
 
-          dataStream.write({
-            type: "data-reportDelta",
-            data: `${content.trim()}\n\n`,
-            transient: true,
-          });
+          await streamReportSectionDelta(dataStream, content);
         }
 
         writeAgentEvent(dataStream, {

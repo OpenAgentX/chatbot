@@ -12,7 +12,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "../ai-elements/tool";
-import { ApexAgentCard, ApexAgentProcessLog } from "./apex-agents";
+import { ApexAgentCard } from "./apex-agents";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
@@ -324,8 +324,8 @@ const PurePreviewMessage = ({
         ? agentRuns[activeRunId]?.events
         : undefined;
 
-      if (state === "output-available") {
-        if (part.output && "error" in part.output) {
+      if (type === "tool-apexResearch") {
+        if (state === "output-available" && part.output && "error" in part.output) {
           return (
             <div
               className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
@@ -336,20 +336,48 @@ const PurePreviewMessage = ({
           );
         }
 
-        if (
-          type === "tool-apexResearch" &&
+        const previewTitle =
+          state === "output-available" &&
           part.output &&
-          "id" in part.output &&
           "title" in part.output &&
-          "kind" in part.output
-        ) {
+          typeof part.output.title === "string"
+            ? part.output.title
+            : part.input &&
+                typeof part.input === "object" &&
+                "company" in part.input &&
+                typeof part.input.company === "string"
+              ? `${part.input.company} Strategic Research Report`
+              : "Strategic Research Report";
+
+        const previewResult =
+          state === "output-available" &&
+          part.output &&
+          !("error" in part.output)
+            ? part.output
+            : undefined;
+
+        return (
+          <div className="w-[min(100%,760px)]" key={toolCallId}>
+            <DocumentPreview
+              args={{
+                kind: "report",
+                title: previewTitle,
+              }}
+              isReadonly={isReadonly}
+              result={previewResult}
+            />
+          </div>
+        );
+      }
+
+      if (state === "output-available") {
+        if (part.output && "error" in part.output) {
           return (
-            <div className="w-[min(100%,760px)] space-y-3" key={toolCallId}>
-              <DocumentPreview
-                isReadonly={isReadonly}
-                result={part.output}
-              />
-              <ApexAgentProcessLog events={processEvents} />
+            <div
+              className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
+              key={toolCallId}
+            >
+              Error: {String(part.output.error)}
             </div>
           );
         }

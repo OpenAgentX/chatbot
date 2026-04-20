@@ -41,11 +41,7 @@ export const reportArtifact = new Artifact<"report", ReportArtifactMetadata>({
         ...draftArtifact,
         content: draftArtifact.content + streamPart.data,
         isVisible:
-          draftArtifact.status === "streaming" &&
-          draftArtifact.content.length > 500 &&
-          draftArtifact.content.length < 560
-            ? true
-            : draftArtifact.isVisible,
+          draftArtifact.status === "streaming" ? true : draftArtifact.isVisible,
         status: "streaming",
       }));
     }
