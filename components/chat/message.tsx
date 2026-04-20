@@ -22,11 +22,79 @@ import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
 
+const APEX_RESEARCH_SECTION_COUNT = 9;
+
 const agentToolTitles: Record<string, string> = {
   "tool-apexResearch": "Apex Research",
   "tool-apexScholar": "Apex Scholar",
   "tool-apexChart": "Apex Chart",
 };
+
+function ApexResearchProgressOverlay({
+  processEvents,
+}: {
+  processEvents?: {
+    status: "thinking" | "tool_call" | "tool_result" | "completed";
+    title: string;
+  }[];
+}) {
+  if (!processEvents?.length) {
+    return null;
+  }
+
+  const latestEvent = processEvents[processEvents.length - 1];
+
+  if (latestEvent.status === "completed") {
+    return null;
+  }
+
+  const completedSectionCount = new Set(
+    processEvents
+      .filter((event) => event.status === "tool_result")
+      .map((event) => event.title)
+  ).size;
+
+  const isSectionGenerating = latestEvent.status === "tool_call";
+  const effectiveProgress = isSectionGenerating
+    ? completedSectionCount + 0.5
+    : completedSectionCount;
+  const progressPercent = Math.min(
+    99,
+    Math.max(
+      0,
+      Math.round((effectiveProgress / APEX_RESEARCH_SECTION_COUNT) * 100)
+    )
+  );
+
+  const currentTitle =
+    latestEvent.status === "thinking"
+      ? "Scoping strategic research brief"
+      : latestEvent.title;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[inherit] bg-background/48 backdrop-blur-[2px]">
+      <div className="mx-6 w-full max-w-sm rounded-2xl border border-border/60 bg-background/82 p-4 shadow-[var(--shadow-card)]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="font-medium text-sm text-foreground">
+            {progressPercent}%
+          </div>
+          <div className="text-muted-foreground text-xs uppercase tracking-[0.18em]">
+            Research In Progress
+          </div>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-foreground/80 transition-[width] duration-300 ease-out"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <div className="mt-3 line-clamp-2 text-balance font-medium text-foreground text-sm leading-6">
+          {currentTitle}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PurePreviewMessage = ({
   addToolApprovalResponse,
@@ -357,7 +425,7 @@ const PurePreviewMessage = ({
             : undefined;
 
         return (
-          <div className="w-[min(100%,760px)]" key={toolCallId}>
+          <div className="relative w-[min(100%,760px)]" key={toolCallId}>
             <DocumentPreview
               args={{
                 kind: "report",
@@ -366,6 +434,7 @@ const PurePreviewMessage = ({
               isReadonly={isReadonly}
               result={previewResult}
             />
+            <ApexResearchProgressOverlay processEvents={processEvents} />
           </div>
         );
       }
