@@ -47,6 +47,17 @@ export async function getUser(email: string): Promise<User[]> {
   }
 }
 
+export async function getUserByWechatId(wechatId: string): Promise<User[]> {
+  try {
+    return await db.select().from(user).where(eq(user.wechatId, wechatId));
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get user by wechatId"
+    );
+  }
+}
+
 export async function createUser(email: string, password: string) {
   const hashedPassword = generateHashedPassword(password);
 
@@ -67,10 +78,28 @@ export async function createGuestUser() {
       email: user.email,
     });
   } catch (_error) {
+    console.error("DB Error in createGuestUser:", _error);
     throw new ChatbotError(
       "bad_request:database",
       "Failed to create guest user"
     );
+  }
+}
+
+export async function createWechatUser(wechatId: string, name?: string, image?: string) {
+  const email = `wechat-${wechatId}@example.com`; // We need a unique email since it's required
+  const password = generateHashedPassword(generateUUID()); // Random password
+  
+  try {
+    return await db.insert(user).values({
+      email,
+      password,
+      name,
+      image,
+      wechatId,
+    }).returning();
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to create WeChat user");
   }
 }
 

@@ -2,8 +2,9 @@ import { compare } from "bcrypt-ts";
 import NextAuth, { type DefaultSession } from "next-auth";
 import type { DefaultJWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
+import WeChat from "next-auth/providers/wechat";
 import { DUMMY_PASSWORD } from "@/lib/constants";
-import { createGuestUser, getUser } from "@/lib/db/queries";
+import { createGuestUser, getUser, getUserByWechatId, createWechatUser } from "@/lib/db/queries";
 import { authConfig } from "./auth.config";
 
 export type UserType = "guest" | "regular";
@@ -38,6 +39,19 @@ export const {
 } = NextAuth({
   ...authConfig,
   providers: [
+    WeChat({
+      clientId: process.env.AUTH_WECHAT_APP_ID,
+      clientSecret: process.env.AUTH_WECHAT_APP_SECRET,
+      platformType: "WebsiteApp",
+      authorization: {
+        url: "https://open.weixin.qq.com/connect/qrconnect",
+        params: {
+          appid: process.env.AUTH_WECHAT_APP_ID,
+          scope: "snsapi_login",
+          response_type: "code",
+        },
+      },
+    }),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -79,8 +93,23 @@ export const {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+      if (account?.provider === "wechat") {
+        const wechatId = account.providerAccountId;
+        let [existingUser] = await getUserByWechatId(wechatId);
+        
+        if (!existingUser) {
+          const [newUser] = await createWechatUser(
+            wechatId, 
+            user?.name || undefined, 
+            user?.image || undefined
+          );
+          existingUser = newUser;
+        }
+        
+        token.id = existingUser.id as string;
+        token.type = "regular";
+      } else if (user) {
         token.id = user.id as string;
         token.type = user.type;
       }
